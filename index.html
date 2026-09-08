@@ -65,6 +65,24 @@
     display: block;
     background: var(--mono-bg);
   }
+  .card-icon {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--mono-bg);
+    color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+  }
+  h2 {
+    max-width: 900px;
+    margin: 2rem auto 0;
+    padding: 0 1.5rem;
+    font-size: 1.05rem;
+  }
   .card-body {
     padding: 0.75rem 0.85rem 0.9rem;
     display: flex;
@@ -113,37 +131,83 @@
   <h1>CD.16 — Análisis y Tratamiento de Imágenes Satelitales</h1>
   <p>Links directos a las imágenes estáticas alojadas en <code>/assets</code>.</p>
 </header>
+<h2>Imágenes</h2>
 <main id="gallery">
   <p class="empty">Cargando…</p>
 </main>
+<h2>Archivos</h2>
+<main id="files">
+  <p class="empty">Cargando…</p>
+</main>
 <script>
-  // Agregar acá el nombre de cada archivo nuevo dentro de assets/
+  // Agregar acá el nombre de cada imagen nueva dentro de assets/ (se previsualiza)
   const IMAGES = [
     "Screenshot at Sep 08 10-53-34.png",
     "Screenshot at Sep 08 11-21-27.png"
   ];
 
-  const gallery = document.getElementById("gallery");
+  // Archivos que no se previsualizan en el navegador (TIFF, etc.), solo link de descarga
+  const FILES = [
+    "LC08_L2SP_230087_20260105_20260114_02_T1_SR_B4.TIF"
+  ];
 
   function buildUrl(name) {
     const base = new URL("assets/", window.location.href);
     return new URL(encodeURIComponent(name), base).href;
   }
 
-  if (IMAGES.length === 0) {
-    gallery.innerHTML = '<p class="empty">Todavía no hay imágenes en assets/.</p>';
-  } else {
-    gallery.innerHTML = "";
-    for (const name of IMAGES) {
+  function buildLinkRow(url) {
+    const row = document.createElement("div");
+    row.className = "link-row";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.readOnly = true;
+    input.value = url;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Copiar";
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        button.textContent = "¡Listo!";
+        setTimeout(() => { button.textContent = "Copiar"; }, 1200);
+      } catch {
+        input.select();
+        document.execCommand("copy");
+      }
+    });
+
+    row.append(input, button);
+    return row;
+  }
+
+  function renderList(container, names, { preview }) {
+    if (names.length === 0) {
+      container.innerHTML = '<p class="empty">Todavía no hay archivos.</p>';
+      return;
+    }
+    container.innerHTML = "";
+    for (const name of names) {
       const url = buildUrl(name);
 
       const card = document.createElement("div");
       card.className = "card";
 
-      const img = document.createElement("img");
-      img.src = url;
-      img.alt = name;
-      img.loading = "lazy";
+      if (preview) {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = name;
+        img.loading = "lazy";
+        card.appendChild(img);
+      } else {
+        const icon = document.createElement("div");
+        icon.className = "card-icon";
+        const ext = name.split(".").pop().toUpperCase();
+        icon.textContent = ext;
+        card.appendChild(icon);
+      }
 
       const body = document.createElement("div");
       body.className = "card-body";
@@ -152,34 +216,14 @@
       label.className = "card-name";
       label.textContent = name;
 
-      const row = document.createElement("div");
-      row.className = "link-row";
-
-      const input = document.createElement("input");
-      input.type = "text";
-      input.readOnly = true;
-      input.value = url;
-
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = "Copiar";
-      button.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(url);
-          button.textContent = "¡Listo!";
-          setTimeout(() => { button.textContent = "Copiar"; }, 1200);
-        } catch {
-          input.select();
-          document.execCommand("copy");
-        }
-      });
-
-      row.append(input, button);
-      body.append(label, row);
-      card.append(img, body);
-      gallery.appendChild(card);
+      body.append(label, buildLinkRow(url));
+      card.appendChild(body);
+      container.appendChild(card);
     }
   }
+
+  renderList(document.getElementById("gallery"), IMAGES, { preview: true });
+  renderList(document.getElementById("files"), FILES, { preview: false });
 </script>
 </body>
 </html>
